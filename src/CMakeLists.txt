@@ -67,6 +67,7 @@ if(WIN32)
 	resource/cemu.rc
 	../dist/windows/cemu.manifest
 	)
+	target_link_libraries(CemuBin PRIVATE setupapi hid)
 endif()
 
 set_property(TARGET CemuBin PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
