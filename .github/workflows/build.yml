@@ -72,7 +72,7 @@ jobs:
     - name: "cmake"
       run: |
         cmake -S . -B build ${{ env.BUILD_FLAGS }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_MODE }} -DCMAKE_C_COMPILER=/usr/bin/clang-15 -DCMAKE_CXX_COMPILER=/usr/bin/clang++-15 -G Ninja -DCMAKE_MAKE_PROGRAM=/usr/bin/ninja
-  
+
     - name: "Build Cemu"
       run: |
         cmake --build build
@@ -158,6 +158,19 @@ jobs:
       uses: jwlawson/actions-setup-cmake@v2
       with:
         cmake-version: '3.29.0'
+
+    # Workaround: the pinned vcpkg submodule commit references an exact MSYS2
+    # pkgconf package build that has since been pruned from all MSYS2 mirrors
+    # (404 on mirror.msys2.org, repo.msys2.org, etc.). MSYS2 only retains the
+    # latest build of each package, so old pins 404 forever. Pulling vcpkg's
+    # tool/scripts to latest master picks up a current pkgconf pin without
+    # touching vcpkg.json's builtin-baseline (port versions are unaffected).
+    # TODO: bump the committed dependencies/vcpkg submodule pointer so this
+    # step can eventually be removed.
+    - name: "Update vcpkg scripts (fix stale MSYS2 mirror pin)"
+      run: |
+        git -C dependencies/vcpkg fetch origin
+        git -C dependencies/vcpkg checkout origin/master
 
     - name: "Bootstrap vcpkg"
       run: |
