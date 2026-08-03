@@ -113,3 +113,21 @@ endif()
 if (UNIX AND NOT APPLE)
 	target_link_libraries(CemuInput PRIVATE bluez::bluez)
 endif ()
+
+
+if (ENABLE_HIDAPI)
+	target_link_libraries(CemuInput PRIVATE hidapi::hidapi)
+endif()
+
+if (ENABLE_WXWIDGETS)
+	target_link_libraries(CemuInput PRIVATE wx::base wx::core)
+endif()
+
+# Aggiungi questo blocco per linkare le API di sistema di Windows richieste dai driver HID
+if (WIN32)
+	target_link_libraries(CemuInput PRIVATE setupapi hid)
+endif()
+
+if (UNIX AND NOT APPLE)
+	target_link_libraries(CemuInput PRIVATE bluez::bluez)
+endif ()
