@@ -59,6 +59,12 @@ if(WIN32)
 		api/DirectInput/DirectInputControllerProvider.h
 		api/DirectInput/DirectInputController.cpp
 	)
+
+	# Aggiunta dei sorgenti o backend HID nativi per Windows (es. nsyshid / WindowsHID)
+	target_sources(CemuInput PRIVATE
+		api/HID/WindowsHID/WindowsHIDControllerProvider.cpp
+		api/HID/WindowsHID/WindowsHIDControllerProvider.h
+	)
 endif()
 
 if (ENABLE_WIIMOTE)
