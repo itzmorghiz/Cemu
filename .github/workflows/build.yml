@@ -13,27 +13,28 @@ on:
 env:
   VCPKG_ROOT: "${{github.workspace}}/dependencies/vcpkg"
   VCPKG_BINARY_SOURCES: 'clear;nuget,GitHub,readwrite'
-
+  VCPKG_FORCE_DOWNLOADED_BINARIES: true
+  
 jobs:
   build-ubuntu:
-    runs-on: ubuntu-22.04
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x64
+          - os: ubuntu-22.04-arm
+            arch: arm
+            
+    name: build-ubuntu-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
     steps:
     - name: "Checkout repo"
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: "recursive"
         fetch-depth: 0
-
-    - name: Cache vcpkg
-      uses: actions/cache@v4
-      with:
-        path: |
-          dependencies/vcpkg/installed
-          dependencies/vcpkg/buildtrees
-          dependencies/vcpkg/packages
-        key: ${{ runner.os }}-vcpkg-v2-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-v2-
 
     - name: Setup release mode parameters
       run: |
@@ -51,11 +52,6 @@ jobs:
       run: |
         sudo apt update -qq
         sudo apt install -y clang-15 cmake freeglut3-dev libgcrypt20-dev libglm-dev libgtk-3-dev libpulse-dev libsecret-1-dev libsystemd-dev libudev-dev nasm ninja-build libbluetooth-dev
-
-    - name: "Setup cmake"
-      uses: jwlawson/actions-setup-cmake@v2
-      with:
-        cmake-version: '3.29.0'
 
     - name: "Bootstrap vcpkg"
       run: |
@@ -78,30 +74,40 @@ jobs:
     - name: "cmake"
       run: |
         cmake -S . -B build ${{ env.BUILD_FLAGS }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_MODE }} -DCMAKE_C_COMPILER=/usr/bin/clang-15 -DCMAKE_CXX_COMPILER=/usr/bin/clang++-15 -G Ninja -DCMAKE_MAKE_PROGRAM=/usr/bin/ninja
-        
+
     - name: "Build Cemu"
       run: |
         cmake --build build
-        
+
     - name: Prepare artifact
       run: mv bin/Cemu_release bin/Cemu
-              
+
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
-        name: cemu-bin-linux-x64
+        name: cemu-bin-linux-${{ matrix.arch }}
         path: ./bin/Cemu
 
   build-appimage:
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x64
+          - os: ubuntu-22.04-arm
+            arch: arm
+            
+    name: build-appimage-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
     needs: build-ubuntu
     steps:
     - name: Checkout Upstream Repo
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
-        name: cemu-bin-linux-x64
+        name: cemu-bin-linux-${{ matrix.arch }}
         path: bin
 
     - name: "Install system dependencies"
@@ -113,39 +119,34 @@ jobs:
       run: |
         export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
         export DEPLOY_GTK_VERSION=3
-        dist/linux/appimage.sh
+        dist/linux/appimage.sh ${{ runner.arch }}
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
-        name: cemu-appimage-x64
+        name: cemu-appimage-${{ matrix.arch }}
         path: artifacts
 
   build-windows:
     runs-on: windows-2022
     steps:
     - name: "Checkout repo"
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: "recursive"
-
-    - name: Cache vcpkg
-      uses: actions/cache@v4
-      with:
-        path: |
-          dependencies/vcpkg/installed
-          dependencies/vcpkg/buildtrees
-          dependencies/vcpkg/packages
-        key: ${{ runner.os }}-vcpkg-v2-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-v2-
 
     - name: Setup release mode parameters
       run: |
         echo "BUILD_MODE=release" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
         echo "BUILD_FLAGS=" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
         echo "Build mode is release"
-        
+
+    - name: Setup build flags for version
+      if: ${{ inputs.next_version_major != '' }}
+      run: |
+        echo "[INFO] Version ${{ inputs.next_version_major }}.${{ inputs.next_version_minor }}"
+        echo "BUILD_FLAGS=${{ env.BUILD_FLAGS }} -DEMULATOR_VERSION_MAJOR=${{ inputs.next_version_major }} -DEMULATOR_VERSION_MINOR=${{ inputs.next_version_minor }}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
     - name: "Setup cmake"
       uses: jwlawson/actions-setup-cmake@v2
       with:
@@ -154,7 +155,7 @@ jobs:
     - name: "Bootstrap vcpkg"
       run: |
         ./dependencies/vcpkg/bootstrap-vcpkg.bat
-        
+
     - name: 'Setup NuGet Credentials for vcpkg'
       shell: 'bash'
       run: |
@@ -168,7 +169,7 @@ jobs:
         `./dependencies/vcpkg/vcpkg.exe fetch nuget | tail -n 1` \
         setapikey "${{ secrets.GITHUB_TOKEN }}" \
         -source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-        
+
     - name: "cmake"
       run: |
         mkdir -p build
@@ -176,7 +177,7 @@ jobs:
         echo "[INFO] BUILD_FLAGS: ${{ env.BUILD_FLAGS }}"
         echo "[INFO] BUILD_MODE: ${{ env.BUILD_MODE }}"
         cmake .. ${{ env.BUILD_FLAGS }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_MODE }} -DVCPKG_INSTALL_OPTIONS="--clean-after-build"
-        
+
     - name: "Build Cemu"
       run: |
         cd build
@@ -184,32 +185,37 @@ jobs:
 
     - name: Prepare artifact
       run: Rename-Item bin/Cemu_release.exe Cemu.exe
-      
+
+    - name: Build NSIS Installer
+      shell: cmd
+      run: |
+        cd src\resource
+        makensis /DPRODUCT_VERSION=${{ inputs.next_version_major }}.${{ inputs.next_version_minor }} installer.nsi
+
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: cemu-bin-windows-x64
         path: ./bin/Cemu.exe
 
+    - name: Upload NSIS Installer
+      uses: actions/upload-artifact@v6
+      with:
+        name: cemu-installer-windows-x64
+        path: ./src/resource/cemu-${{ inputs.next_version_major }}.${{ inputs.next_version_minor }}-windows-x64-installer.exe
+
   build-macos:
     runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, arm64]
     steps:
     - name: "Checkout repo"
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: "recursive"
-    
-    - name: Cache vcpkg
-      uses: actions/cache@v4
-      with:
-        path: |
-          dependencies/vcpkg/installed
-          dependencies/vcpkg/buildtrees
-          dependencies/vcpkg/packages
-        key: ${{ runner.os }}-vcpkg-v2-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-v2-
-        
+
     - name: Setup release mode parameters
       run: |
         echo "BUILD_MODE=release" >> $GITHUB_ENV
@@ -221,16 +227,19 @@ jobs:
       run: |
         echo "[INFO] Version ${{ inputs.next_version_major }}.${{ inputs.next_version_minor }}"
         echo "BUILD_FLAGS=${{ env.BUILD_FLAGS }} -DEMULATOR_VERSION_MAJOR=${{ inputs.next_version_major }} -DEMULATOR_VERSION_MINOR=${{ inputs.next_version_minor }}" >> $GITHUB_ENV
-        
+
     - name: "Install system dependencies"
       run: |
+        # Removing azure/bicep and aws to silence warnings in Github Actions
+        brew uninstall bicep
+        brew untap aws/tap azure/bicep
         brew update
-        brew install ninja nasm automake libtool
+        brew install nasm automake libtool
 
     - name: "Install molten-vk"
       run: |
-        curl -L -O https://github.com/KhronosGroup/MoltenVK/releases/download/v1.2.9/MoltenVK-macos.tar
-        tar xf MoltenVK-macos.tar
+        curl -L -O https://github.com/KhronosGroup/MoltenVK/releases/download/v1.4.1/MoltenVK-macos-privateapi.tar
+        tar xf MoltenVK-macos-privateapi.tar
         sudo mkdir -p /usr/local/lib
         sudo cp MoltenVK/MoltenVK/dynamic/dylib/macOS/libMoltenVK.dylib /usr/local/lib
 
@@ -242,7 +251,7 @@ jobs:
     - name: "Bootstrap vcpkg"
       run: |
         bash ./dependencies/vcpkg/bootstrap-vcpkg.sh
-        
+
     - name: 'Setup NuGet Credentials for vcpkg'
       shell: 'bash'
       run: |
@@ -256,17 +265,17 @@ jobs:
         mono `./dependencies/vcpkg/vcpkg fetch nuget | tail -n 1` \
         setapikey "${{ secrets.GITHUB_TOKEN }}" \
         -source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-        
+
     - name: "cmake"
       run: |
         mkdir build
         cd build
         cmake .. ${{ env.BUILD_FLAGS }} \
         -DCMAKE_BUILD_TYPE=${{ env.BUILD_MODE }} \
-        -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+        -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
         -DMACOS_BUNDLE=ON \
         -G Ninja
-        
+
     - name: "Build Cemu"
       run: |
         cmake --build build
@@ -277,14 +286,14 @@ jobs:
         mv bin/Cemu_release.app bin/Cemu_app/Cemu.app
         mv bin/Cemu_app/Cemu.app/Contents/MacOS/Cemu_release bin/Cemu_app/Cemu.app/Contents/MacOS/Cemu
         sed -i '' 's/Cemu_release/Cemu/g' bin/Cemu_app/Cemu.app/Contents/Info.plist
-        chmod a+x bin/Cemu_app/Cemu.app/Contents/MacOS/{Cemu,update.sh}
+        codesign --entitlements ${{github.workspace}}/src/resource/cemu.macos.entitlements --force --deep --preserve-metadata=entitlements,requirements,flags,runtime --sign - --timestamp --options runtime bin/Cemu_app/Cemu.app/Contents/MacOS/Cemu
         ln -s /Applications bin/Cemu_app/Applications
         hdiutil create ./bin/tmp.dmg -ov -volname "Cemu" -fs HFS+ -srcfolder "./bin/Cemu_app"
         hdiutil convert ./bin/tmp.dmg -format UDZO -o bin/Cemu.dmg
         rm bin/tmp.dmg
-              
+
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
-        name: cemu-bin-macos-x64
+        name: cemu-bin-macos-${{ matrix.arch }}
         path: ./bin/Cemu.dmg
