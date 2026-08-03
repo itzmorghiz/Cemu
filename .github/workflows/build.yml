@@ -121,7 +121,7 @@ jobs:
         name: cemu-appimage-x64
         path: artifacts
 
-build-windows:
+  build-windows:
     runs-on: windows-2022
     steps:
     - name: "Checkout repo"
@@ -129,7 +129,6 @@ build-windows:
       with:
         submodules: "recursive"
 
-    # AGGIUNGI QUESTO BLOCCO PER LA CACHE DI VCPKG
     - name: Cache vcpkg
       uses: actions/cache@v4
       with:
