@@ -24,6 +24,17 @@ jobs:
         submodules: "recursive"
         fetch-depth: 0
 
+    - name: Cache vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          dependencies/vcpkg/installed
+          dependencies/vcpkg/buildtrees
+          dependencies/vcpkg/packages
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+
     - name: Setup release mode parameters
       run: |
         echo "BUILD_MODE=release" >> $GITHUB_ENV
@@ -110,7 +121,7 @@ jobs:
         name: cemu-appimage-x64
         path: artifacts
 
-  build-windows:
+build-windows:
     runs-on: windows-2022
     steps:
     - name: "Checkout repo"
@@ -118,18 +129,24 @@ jobs:
       with:
         submodules: "recursive"
 
+    # AGGIUNGI QUESTO BLOCCO PER LA CACHE DI VCPKG
+    - name: Cache vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          dependencies/vcpkg/installed
+          dependencies/vcpkg/buildtrees
+          dependencies/vcpkg/packages
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+
     - name: Setup release mode parameters
       run: |
         echo "BUILD_MODE=release" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
         echo "BUILD_FLAGS=" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
         echo "Build mode is release"
-
-    - name: Setup build flags for version
-      if: ${{ inputs.next_version_major != '' }}
-      run: |
-        echo "[INFO] Version ${{ inputs.next_version_major }}.${{ inputs.next_version_minor }}"
-        echo "BUILD_FLAGS=${{ env.BUILD_FLAGS }} -DEMULATOR_VERSION_MAJOR=${{ inputs.next_version_major }} -DEMULATOR_VERSION_MINOR=${{ inputs.next_version_minor }}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
-
+        
     - name: "Setup cmake"
       uses: jwlawson/actions-setup-cmake@v2
       with:
@@ -182,6 +199,17 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: "recursive"
+    
+    - name: Cache vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          dependencies/vcpkg/installed
+          dependencies/vcpkg/buildtrees
+          dependencies/vcpkg/packages
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
         
     - name: Setup release mode parameters
       run: |
