@@ -29,10 +29,7 @@ jobs:
     - name: Cache vcpkg
       uses: actions/cache@v4
       with:
-        path: |
-          dependencies/vcpkg/installed
-          dependencies/vcpkg/buildtrees
-          dependencies/vcpkg/packages
+        path: dependencies/vcpkg/installed
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
@@ -89,6 +86,17 @@ jobs:
         name: cemu-bin-linux-x64
         path: ./bin/Cemu
 
+    - name: Upload vcpkg logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v6
+      with:
+        name: vcpkg-logs-ubuntu
+        path: |
+          build/vcpkg-manifest-install.log
+          build/vcpkg_installed/vcpkg/issue_body.md
+          dependencies/vcpkg/buildtrees/**/*.log
+        if-no-files-found: ignore
+
   build-appimage:
     runs-on: ubuntu-22.04
     needs: build-ubuntu
@@ -129,10 +137,7 @@ jobs:
     - name: Cache vcpkg
       uses: actions/cache@v4
       with:
-        path: |
-          dependencies/vcpkg/installed
-          dependencies/vcpkg/buildtrees
-          dependencies/vcpkg/packages
+        path: dependencies/vcpkg/installed
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-
@@ -207,6 +212,17 @@ jobs:
         name: cemu-installer-windows-x64
         path: ./src/resource/cemu-${{ inputs.next_version_major }}.${{ inputs.next_version_minor }}-windows-x64-installer.exe
 
+    - name: Upload vcpkg logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v6
+      with:
+        name: vcpkg-logs-windows
+        path: |
+          build/vcpkg-manifest-install.log
+          build/vcpkg_installed/vcpkg/issue_body.md
+          dependencies/vcpkg/buildtrees/**/*.log
+        if-no-files-found: ignore
+
   build-macos:
     runs-on: macos-14
     steps:
@@ -218,10 +234,7 @@ jobs:
     - name: Cache vcpkg
       uses: actions/cache@v4
       with:
-        path: |
-          dependencies/vcpkg/installed
-          dependencies/vcpkg/buildtrees
-          dependencies/vcpkg/packages
+        path: dependencies/vcpkg/installed
         key: ${{ runner.os }}-x86_64-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
         restore-keys: |
           ${{ runner.os }}-x86_64-vcpkg-
@@ -310,3 +323,14 @@ jobs:
       with:
         name: cemu-bin-macos-x64
         path: ./bin/Cemu.dmg
+
+    - name: Upload vcpkg logs on failure
+      if: failure()
+      uses: actions/upload-artifact@v6
+      with:
+        name: vcpkg-logs-macos
+        path: |
+          build/vcpkg-manifest-install.log
+          build/vcpkg_installed/vcpkg/issue_body.md
+          dependencies/vcpkg/buildtrees/**/*.log
+        if-no-files-found: ignore
