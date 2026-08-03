@@ -31,9 +31,9 @@ jobs:
           dependencies/vcpkg/installed
           dependencies/vcpkg/buildtrees
           dependencies/vcpkg/packages
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
+        key: ${{ runner.os }}-vcpkg-v2-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
         restore-keys: |
-          ${{ runner.os }}-vcpkg-
+          ${{ runner.os }}-vcpkg-v2-
 
     - name: Setup release mode parameters
       run: |
@@ -136,9 +136,9 @@ jobs:
           dependencies/vcpkg/installed
           dependencies/vcpkg/buildtrees
           dependencies/vcpkg/packages
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
+        key: ${{ runner.os }}-vcpkg-v2-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
         restore-keys: |
-          ${{ runner.os }}-vcpkg-
+          ${{ runner.os }}-vcpkg-v2-
 
     - name: Setup release mode parameters
       run: |
@@ -206,9 +206,9 @@ jobs:
           dependencies/vcpkg/installed
           dependencies/vcpkg/buildtrees
           dependencies/vcpkg/packages
-        key: ${{ runner.os }}-vcpkg-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
+        key: ${{ runner.os }}-vcpkg-v2-${{ hashFiles('dependencies/vcpkg/vcpkg.json') }}
         restore-keys: |
-          ${{ runner.os }}-vcpkg-
+          ${{ runner.os }}-vcpkg-v2-
         
     - name: Setup release mode parameters
       run: |
