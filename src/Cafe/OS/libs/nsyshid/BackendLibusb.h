@@ -1,7 +1,14 @@
+#pragma once
+
 #include "nsyshid.h"
 
 #include <libusb-1.0/libusb.h>
 #include "Backend.h"
+
+#if defined(_WIN32)
+#include <windows.h>
+#include <hidsdi.h>
+#endif
 
 namespace nsyshid::backend::libusb
 {
@@ -66,6 +73,13 @@ namespace nsyshid::backend::libusb
 					 uint8 libusbDeviceAddress,
 					 std::vector<ConfigDescriptor> configs);
 
+#if defined(_WIN32)
+		// Costruttore alternativo/overload per dispositivi Bluetooth/HID nativi di Windows
+		DeviceLibusb(uint16 vendorId,
+					 uint16 productId,
+					 std::string winDevicePath);
+#endif
+
 		~DeviceLibusb() override;
 
 		bool Open() override;
@@ -102,6 +116,12 @@ namespace nsyshid::backend::libusb
 		uint8 m_libusbEndpointIn;
 		bool m_libusbHasEndpointOut;
 		uint8 m_libusbEndpointOut;
+
+#if defined(_WIN32)
+		bool m_isWindowsHidBluetooth;
+		std::string m_winDevicePath;
+		HANDLE m_winFileHandle;
+#endif
 
 	  private:
 		void CloseDevice();
